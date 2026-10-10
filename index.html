@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ইউটিউব অটো টাইমার ও প্লেয়ার</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .short-mode { width: 320px !important; height: 570px !important; margin: 0 auto; }
+        .long-mode { width: 100% !important; height: 450px !important; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center p-4">
+
+    <div class="w-full max-w-2xl bg-gray-800 rounded-2xl shadow-2xl p-6 border border-gray-700">
+        <h1 class="text-2xl font-bold text-center mb-6 text-red-500">ইউটিউব লাইভ ও টাইমার কন্ট্রোলার</h1>
+
+        <!-- ইনপুট সেকশন -->
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">ইউটিউব ভিডিও বা শর্টস লিংক:</label>
+                <input type="text" id="videoUrl" placeholder="যেমন: https://www.youtube.com/watch?v=..." class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">সময় সেট করুন (ঘণ্টায়):</label>
+                    <input type="number" id="hoursInput" placeholder="যেমন: ১২ বা ২৪" class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">মোড সিলেক্ট করুন:</label>
+                    <select id="videoMode" class="w-full p-3 bg-gray-700 rounded-lg border border-gray-600 focus:outline-none focus:border-red-500">
+                        <option value="long">লং ভিডিও (Long Video)</option>
+                        <option value="short">শর্টস (Shorts)</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="startApp()" class="w-full bg-red-600 hover:bg-red-700 font-bold p-3 rounded-lg transition duration-200 shadow-lg">শুরু করুন</button>
+        </div>
+
+        <!-- স্ট্যাটাস ও কাউন্টডাউন -->
+        <div id="statusSection" class="mt-6 hidden bg-gray-700 p-4 rounded-xl flex justify-between items-center">
+            <div>
+                <p class="text-sm text-gray-300">অবশিষ্ট সময়:</p>
+                <span id="countdownTimer" class="text-xl font-bold text-yellow-400">০০:০০:০০</span>
+            </div>
+            <div class="text-right">
+                <p class="text-sm text-gray-300">লাইভ ভিউয়ার্স:</p>
+                <span id="viewerCount" class="text-xl font-bold text-green-400">0</span> জন
+            </div>
+        </div>
+
+        <!-- ভিডিও প্লেয়ার ডিসপ্লে -->
+        <div id="playerWrapper" class="mt-6 flex justify-center">
+            <div id="playerContainer" class="w-full text-center text-gray-400 bg-gray-900 rounded-lg flex items-center justify-center h-64 border border-dashed border-gray-600">
+                ভিডিও দেখতে লিংক দিয়ে শুরু করুন ক্লিক করুন
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let timerInterval, viewerInterval;
+
+        function startApp() {
+            const url = document.getElementById('videoUrl').value.trim();
+            const hours = parseFloat(document.getElementById('hoursInput').value);
+            const mode = document.getElementById('videoMode').value;
+            const playerContainer = document.getElementById('playerContainer');
+            const statusSection = document.getElementById('statusSection');
+
+            if (!url) {
+                alert('দয়া করে একটি সঠিক ইউটিউব লিংক দিন!');
+                return;
+            }
+
+            let videoId = '';
+            if (url.includes('shorts/')) {
+                videoId = url.split('shorts/')[1]?.split('?')[0];
+            } else if (url.includes('v=')) {
+                videoId = url.split('v=')[1]?.split('&')[0];
+            } else if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1]?.split('?')[0];
+            }
+
+            if (!videoId) {
+                alert('ইউটিউব ভিডিও আইডি শনাক্ত করা যায়নি। সঠিক লিংক দিন।');
+                return;
+            }
+
+            // প্লেয়ার তৈরি
+            statusSection.classList.remove('hidden');
+            playerContainer.className = mode === 'short' ? 'short-mode' : 'long-mode';
+            playerContainer.innerHTML = `<iframe class="w-full h-full rounded-lg" src="https://www.youtube.com/embed/${videoId}?autoplay=1&loop=1&playlist=${videoId}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+
+            // টাইমার সেটআপ
+            if (hours && hours > 0) {
+                let totalSeconds = hours * 3600;
+                clearInterval(timerInterval);
+                timerInterval = setInterval(() => {
+                    if (totalSeconds <= 0) {
+                        clearInterval(timerInterval);
+                        clearInterval(viewerInterval);
+                        playerContainer.innerHTML = '<div class="text-red-400 font-bold text-lg">সময় শেষ! ভিডিও বন্ধ করা হয়েছে।</div>';
+                        statusSection.classList.add('hidden');
+                        return;
+                    }
+                    totalSeconds--;
+                    let h = Math.floor(totalSeconds / 3600);
+                    let m = Math.floor((totalSeconds % 3600) / 60);
+                    let s = totalSeconds % 60;
+                    document.getElementById('countdownTimer').innerText = 
+                        String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+                }, 1000);
+            } else {
+                document.getElementById('countdownTimer').innerText = 'সময় নির্ধারিত নেই';
+            }
+
+            // ভিউয়ার কাউন্টার সিমুলেশন
+            let currentViewers = Math.floor(Math.random() * 50) + 10;
+            document.getElementById('viewerCount').innerText = currentViewers;
+            clearInterval(viewerInterval);
+            viewerInterval = setInterval(() => {
+                let change = Math.floor(Math.random() * 5) - 2;
+                currentViewers = Math.max(5, currentViewers + change);
+                document.getElementById('viewerCount').innerText = currentViewers;
+            }, 4000);
+        }
+    </script>
+</body>
+</html>
